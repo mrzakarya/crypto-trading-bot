@@ -1,2 +1,2 @@
-date,entry_price,prediction,confidence,rsi,sentiment,result,exit_price,exit_date,price_change_pct
-2026-08-25,79358.72,DOWN,65.78,89.77,0.574,pending,,,
+date,entry_price,prediction,confidence,rsi,sentiment,result,exit_price,exit_date,price_change_pct,vote_details
+2026-08-25,78899.05,DOWN,32.63,89.26,0.574,pending,,,,LGBM:33.6% | RF:51.0% | LR:46.0% | MLP:0.0%
