@@ -156,41 +156,49 @@ def check_yesterday_prediction():
         print(f"⚠️ خطا در بررسی پیش‌بینی دیروز: {e}")
         
 def make_today_prediction():
-    """پیش‌بینی امروز و ثبت در لاگ"""
+    """پیش‌بینی امروز با سیستم Ensemble و ثبت در لاگ"""
     print("\n" + "="*70)
-    print("🔮 پیش‌بینی امروز")
+    print("🔮 پیش‌بینی امروز (سیستم Ensemble)")
     print("="*70)
     
-    model = load_model()
-    if model is None:
+    model_file = "ensemble_trading_model.pkl"
+    if not os.path.exists(model_file):
+        print(f"⚠️ فایل {model_file} یافت نشد!")
         return
+    
+    model = joblib.load(model_file)
+    print("✓ مدل کمیته متخصصان بارگذاری شد.")
     
     X_today, latest_row = build_features_for_today()
     if X_today is None:
         return
     
-    # پیش‌بینی مدل
+    # ۱. پیش‌بینی نهایی
     prediction = model.predict(X_today)[0]
     pred_label = 'UP' if prediction == 1 else 'DOWN'
     
-    # دریافت احتمال (Probability) از مدل
-    try:
-        probabilities = model.predict_proba(X_today)[0]
-        confidence = max(probabilities) * 100
-    except:
-        confidence = 50.0
+    # ۲. دریافت جزئیات رأی‌گیری هر مدل
+    vote_details = []
+    final_prob_up = model.predict_proba(X_today)[0][1]
+    
+    for name, mdl in model.named_estimators_.items():
+        prob = mdl.predict_proba(X_today)[0][1] * 100
+        vote_details.append(f"{name.upper()}:{prob:.1f}%")
+    
+    vote_string = " | ".join(vote_details)
     
     today_str = datetime.now().strftime("%Y-%m-%d")
     price = float(latest_row['Close'])
     rsi = float(latest_row['RSI'])
     sentiment = float(latest_row['Hybrid_Sentiment'])
     
-    # ثبت در لاگ
+    # ۳. ثبت در لاگ
     new_entry = pd.DataFrame([{
         'date': today_str,
         'entry_price': round(price, 2),
         'prediction': pred_label,
-        'confidence': round(confidence, 2),
+        'confidence': round(final_prob_up * 100, 2),
+        'vote_details': vote_string, # <--- جزئیات رأی‌گیری اضافه شد
         'rsi': round(rsi, 2),
         'sentiment': round(sentiment, 3),
         'result': 'pending',
@@ -201,7 +209,6 @@ def make_today_prediction():
     
     if os.path.exists(LOG_FILE):
         existing_df = pd.read_csv(LOG_FILE)
-        # جلوگیری از ثبت تکراری برای یک روز
         existing_df = existing_df[existing_df['date'] != today_str]
         combined_df = pd.concat([existing_df, new_entry], ignore_index=True)
     else:
@@ -211,13 +218,11 @@ def make_today_prediction():
     
     # نمایش نتیجه
     emoji = '🟢' if pred_label == 'UP' else '🔴'
-    print(f"\n{emoji} پیش‌بینی مدل برای فردا: {'صعودی (UP)' if pred_label == 'UP' else 'نزولی (DOWN)'}")
-    print(f"   💰 قیمت ورود: {price:,.2f} دلار")
-    print(f"   🎯 اطمینان مدل: {confidence:.1f}%")
-    print(f"   📊 RSI: {rsi:.2f}")
-    print(f"   📰 احساسات بازار: {sentiment:.3f}")
+    print(f"\n{emoji} تصمیم نهایی کمیته: {'صعودی (UP)' if pred_label == 'UP' else 'نزولی (DOWN)'}")
+    print(f"   🗳️ آرای مدل‌ها: {vote_string}")
+    print(f"   💰 قیمت: {price:,.2f} دلار | 🎯 اطمینان میانگین: {final_prob_up*100:.1f}%")
     print(f"\n✅ پیش‌بینی در '{LOG_FILE}' ثبت شد.")
-
+    
 def show_summary():
     """نمایش خلاصه عملکرد کلی"""
     if not os.path.exists(LOG_FILE):
