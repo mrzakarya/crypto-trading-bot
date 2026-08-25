@@ -5,3 +5,4 @@ hazm
 requests
 beautifulsoup4
 yfinance
+joblib
