@@ -67,13 +67,18 @@ if not df.empty:
     col1, col2 = st.columns(2)
     with col1:
         st.metric("تصمیم نهایی", 
-                  "🟢 صعودی (UP)" if last_pred['prediction'] == 'UP' else "🔴 نزولی (DOWN)",
+                  "🟢 صعودی (UP)" if str(last_pred['prediction']).strip() == 'UP' else "🔴 نزولی (DOWN)",
                   f"اطمینان: {last_pred['confidence']}%")
     
     with col2:
-        # 🔥 بررسی هوشمند: اگر ستون وجود داشت نشان بده، وگرنه پیام صبر بده
-        if 'vote_details' in last_pred and pd.notna(last_pred['vote_details']):
-            st.info(f"**جزئیات آرا:**\n\n{last_pred['vote_details']}")
+        # 🔥 شرط اصلاح‌شده: بررسی وجود ستون در کل دیتافریم + خالی نبودن مقدار
+        if 'vote_details' in df.columns and pd.notna(last_pred['vote_details']) and str(last_pred['vote_details']).strip() != '':
+            
+            # زیباسازی متن: تبدیل " | " به خط جدید برای خوانایی بهتر در داشبورد
+            raw_votes = str(last_pred['vote_details'])
+            formatted_votes = raw_votes.replace(' | ', '\n\n🔹 ')
+            
+            st.info(f"**جزئیات آرا:**\n\n🔹 {formatted_votes}")
         else:
             st.warning("⏳ در حال ثبت جزئیات آرا... (پس از اجرای بعدی ربات به‌روز می‌شود)")
             
