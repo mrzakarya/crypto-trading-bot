@@ -2,3 +2,6 @@ feedparser
 vaderSentiment
 pandas
 hazm
+requests
+beautifulsoup4
+yfinance
