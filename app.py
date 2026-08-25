@@ -71,7 +71,12 @@ if not df.empty:
                   f"اطمینان: {last_pred['confidence']}%")
     
     with col2:
-        st.info(f"**جزئیات آرا:**\n\n{last_pred['vote_details']}")
+        # 🔥 بررسی هوشمند: اگر ستون وجود داشت نشان بده، وگرنه پیام صبر بده
+        if 'vote_details' in last_pred and pd.notna(last_pred['vote_details']):
+            st.info(f"**جزئیات آرا:**\n\n{last_pred['vote_details']}")
+        else:
+            st.warning("⏳ در حال ثبت جزئیات آرا... (پس از اجرای بعدی ربات به‌روز می‌شود)")
+            
     st.markdown("---")
 
     # ==========================================
