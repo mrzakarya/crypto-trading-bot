@@ -29,6 +29,62 @@ def load_data():
 
 df = load_data()
 
+
+# ==========================================
+# بخش جدید: نظارت بر سلامت خط لوله داده‌ها (Data Pipeline Monitoring)
+# ==========================================
+st.subheader("📡 وضعیت سلامت جمع‌آوری داده‌ها (Data Pipeline)")
+
+# آدرس فایل‌های CSV در گیت‌هاب (نام کاربری خود را در صورت نیاز تغییر دهید)
+DATASETS = {
+    "اخبار کریپتو": "https://raw.githubusercontent.com/mrzakarya/crypto-trading-bot/main/crypto_news_dataset.csv",
+    "اخبار بازار ایران": "https://raw.githubusercontent.com/mrzakarya/crypto-trading-bot/main/iran_market_news_dataset.csv",
+    "قیمت‌های بازار ایران": "https://raw.githubusercontent.com/mrzakarya/crypto-trading-bot/main/iran_market_prices.csv"
+}
+
+def get_dataset_stats(url):
+    """دریافت آمار یک فایل CSV از گیت‌هاب"""
+    try:
+        temp_df = pd.read_csv(url)
+        if temp_df.empty:
+            return {"status": "⚠️ خالی", "count": 0, "last_date": "بدون داده"}
+        
+        count = len(temp_df)
+        # پیدا کردن آخرین تاریخ (فرض بر این است که ستونی به نام 'date' وجود دارد)
+        if 'date' in temp_df.columns:
+            last_date = pd.to_datetime(temp_df['date'], errors='coerce').max()
+            last_date_str = last_date.strftime('%Y-%m-%d') if pd.notna(last_date) else "نامشخص"
+        else:
+            last_date_str = "ستون تاریخ یافت نشد"
+            
+        return {"status": "✅ فعال", "count": count, "last_date": last_date_str}
+    except Exception as e:
+        return {"status": "❌ خطا", "count": 0, "last_date": str(e)[:30] + "..."}
+
+# نمایش آمار در ۳ ستون
+col_d1, col_d2, col_d3 = st.columns(3)
+
+datasets_list = list(DATASETS.items())
+for i, (name, url) in enumerate(datasets_list):
+    stats = get_dataset_stats(url)
+    
+    with [col_d1, col_d2, col_d3][i]:
+        st.metric(
+            label=name,
+            value=f"{stats['count']:,} رکورد",
+            delta=f"آخرین به‌روزرسانی: {stats['last_date']}",
+            delta_color="normal" if stats['status'] == "✅ فعال" else "inverse"
+        )
+        if stats['status'] != "✅ فعال":
+            st.caption(f"وضعیت: {stats['status']}")
+
+st.markdown("---")
+# ==========================================
+# ادامه کد اصلی شما (if not df.empty:)
+# ==========================================
+
+
+
 if not df.empty:
     # ==========================================
     # ۱. محاسبه متریک‌های کلیدی (KPIs)
