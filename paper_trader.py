@@ -81,7 +81,8 @@ def build_features_for_today():
     features = ['SMA_20', 'Dist_from_SMA50', 'RSI', 'Volume_Change', 
                 'Hybrid_Sentiment', 'Hybrid_Sentiment_SMA_3']
     
-    X_today = latest_row[features].values.reshape(1, -1)
+    # ساخت یک DataFrame تک‌ردیفی با نام ستون‌های صحیح برای حذف هشدار
+    X_today = pd.DataFrame([latest_row[features]], columns=features)
     
     return X_today, latest_row
 
@@ -94,6 +95,10 @@ def check_yesterday_prediction():
     df = pd.read_csv(LOG_FILE)
     if df.empty:
         return
+    
+    # 🔥 رفع خطای dtype: تبدیل ستون‌های متنی به object
+    df['exit_date'] = df['exit_date'].astype(object)
+    df['result'] = df['result'].astype(object)
     
     # پیدا کردن آخرین پیش‌بینی در وضعیت "pending"
     pending_rows = df[df['result'] == 'pending']
@@ -118,7 +123,6 @@ def check_yesterday_prediction():
         today_date = today_data.index[-1].strftime("%Y-%m-%d")
         
         # بررسی بر اساس تعریف Target مدل (۰.۵٪ رشد در ۳ روز)
-        # اما برای سادگی، فقط تغییر از دیروز تا امروز را چک می‌کنیم
         price_change_pct = ((today_close - entry_price) / entry_price) * 100
         
         # تعیین نتیجه
@@ -150,7 +154,7 @@ def check_yesterday_prediction():
         
     except Exception as e:
         print(f"⚠️ خطا در بررسی پیش‌بینی دیروز: {e}")
-
+        
 def make_today_prediction():
     """پیش‌بینی امروز و ثبت در لاگ"""
     print("\n" + "="*70)
