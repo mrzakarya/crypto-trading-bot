@@ -1,0 +1,44 @@
+name: Daily Crypto News Collector
+
+# زمان‌بندی اجرا: هر روز راس ساعت 8:30 صبح به وقت UTC (حدود 12:00 ظهر به وقت ایران)
+# همچنین امکان اجرای دستی را هم فراهم می‌کند
+on:
+  schedule:
+    - cron: '30 8 * * *'
+  workflow_dispatch: # این خط اجازه می‌دهد دکمه "Run workflow" را دستی بزنید
+
+jobs:
+  collect-and-save:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ۱. دانلود کدهای مخزن
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ۲. نصب پایتون
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # ۳. نصب کتابخانه‌های مورد نیاز
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ۴. اجرای اسکریپت جمع‌آوری اخبار
+      - name: Run news collector
+        run: python news_collector.py
+
+      # ۵. ذخیره خودکار فایل CSV به‌روز شده در گیت‌هاب
+      - name: Commit and push if changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add crypto_news_dataset.csv
+          git commit -m "chore: update crypto news dataset $(date)" || echo "No changes to commit"
+          git push
