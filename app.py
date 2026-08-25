@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh  # <--- این خط را اضافه کنید
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
@@ -6,7 +7,12 @@ from datetime import datetime
 # تنظیمات صفحه
 st.set_page_config(page_title="داشبورد ربات تریدر هوشمند", page_icon="🤖", layout="wide")
 
+# 🔥 فعال‌سازی رفرش خودکار هر ۳۰ ثانیه (۳۰۰۰۰ میلی‌ثانیه)
+# limit=None یعنی تا ابد ادامه پیدا کند
+st_autorefresh(interval=30000, limit=None, key="dashboard_autorefresh")
+
 st.title("🤖 داشبورد عملکرد ربات تریدر هوشمند (Paper Trading)")
+# ... (بقیه کد شما به همین شکل باقی بماند)
 st.markdown("این داشبورد به صورت زنده داده‌ها را از مخزن گیت‌هاب می‌خواند.")
 
 # بارگذاری داده‌ها
