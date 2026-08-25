@@ -1,0 +1,2 @@
+date,entry_price,prediction,confidence,rsi,sentiment,result,exit_price,exit_date,price_change_pct
+2026-08-25,79219.63,DOWN,68.61,89.69,0.574,pending,,,
