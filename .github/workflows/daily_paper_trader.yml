@@ -2,8 +2,8 @@ name: Daily Paper Trader
 
 on:
   schedule:
-    - cron: '0 10 * * *' # هر روز ساعت ۱۳:۳۰ به وقت ایران (بعد از بسته شدن کندل روزانه)
-  workflow_dispatch: # امکان اجرای دستی
+    - cron: '0 10 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,18 +28,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Paper Trader
-        run: python paper_trader.py
+      # 🔥 بررسی حجم فایل مدل (اگر بزرگتر از ۹۰MB باشد، هشدار می‌دهد)
+      - name: Check model file size
+        run: |
+          if [ -f btc_trading_model.pkl ]; then
+            SIZE=$(stat -c%s btc_trading_model.pkl 2>/dev/null || stat -f%z btc_trading_model.pkl)
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            echo "📦 حجم فایل مدل: ${SIZE_MB} مگابایت"
+            if [ $SIZE_MB -gt 90 ]; then
+              echo "⚠️ هشدار: فایل مدل خیلی بزرگ است و ممکن است در push به مشکل بخورد."
+            fi
+          else
+            echo "⚠️ فایل مدل یافت نشد!"
+          fi
 
+      # 🔥 اجرای Paper Trader با continue-on-error
+      - name: Run Paper Trader
+        id: paper_trader
+        run: python paper_trader.py
+        continue-on-error: true
+
+      # 🔥 Commit هوشمند: فقط اگر فایل واقعاً ساخته شده باشد
       - name: Commit and push log
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add paper_trading_log.csv
           
-          if git diff --staged --quiet; then
-            echo "تغییری در لاگ Paper Trader وجود ندارد."
+          if [ -f paper_trading_log.csv ]; then
+            git add paper_trading_log.csv
+            if git diff --staged --quiet; then
+              echo "ℹ️ تغییری در لاگ Paper Trader وجود ندارد."
+            else
+              git commit -m "chore: update paper trading log $(date)"
+              git push
+            fi
           else
-            git commit -m "chore: update paper trading log $(date)"
-            git push
+            echo "⚠️ فایل paper_trading_log.csv ساخته نشد. احتمالاً خطایی در اجرای اسکریپت رخ داده است."
+            echo "لطفاً لاگ مرحله 'Run Paper Trader' را بررسی کنید."
           fi
