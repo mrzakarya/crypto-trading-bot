@@ -10,18 +10,14 @@ from hazm import Normalizer, word_tokenize
 # تنظیمات مخصوص بازار ایران
 # ==========================================
 
-# منابع خبری فارسی (RSS)
+# منابع خبری فارسی (RSS) - به‌روزرسانی شده با لینک‌های پایدارتر
 RSS_FEEDS_IRAN = [
-    # طلا، دلار، ارز
-    "https://www.tgju.org/rss",
-    # اقتصاد ایران
-    "https://www.ecoiran.com/feed/",
-    # اقتصاد آنلاین
-    "https://www.ibena.ir/rss",
-    # تجارت نیوز
-    "https://tejaratnews.com/feed",
-    # خبرآنلاین - اقتصادی
-    "https://www.khabaronline.ir/rss/economy",
+    "https://tejaratnews.com/feed",               # تجارت نیوز (که قبلاً کار کرد)
+    "https://donya-e-eqtesad.com/rss",            # دنیای اقتصاد (بسیار معتبر و پایدار)
+    "https://www.eghtesadonline.com/fa/rss",      # اقتصاد آنلاین
+    "https://www.bourse24.ir/rss",                # بورس ۲۴ (مخصوص بازار سرمایه)
+    "https://www.asreeghtesad.com/fa/rss",        # عصر اقتصاد
+    "https://www.tgju.org/profile/price_dollar_rl/rss" # RSS اختصاصی قیمت دلار از TGJU (اگر فعال باشد)
 ]
 
 DATASET_FILE = "iran_market_news_dataset.csv"
