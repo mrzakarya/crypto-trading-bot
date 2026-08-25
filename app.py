@@ -79,6 +79,183 @@ for i, (name, url) in enumerate(datasets_list):
             st.caption(f"وضعیت: {stats['status']}")
 
 st.markdown("---")
+
+# ==========================================
+# بخش جدید: قیمت‌های زنده بازار (Live Market Prices)
+# ==========================================
+import yfinance as yf
+
+@st.cache_data(ttl=300)  # کش ۵ دقیقه‌ای (برای جلوگیری از درخواست‌های مکرر)
+def get_live_market_prices():
+    """دریافت قیمت‌های زنده از yfinance (سریع و یکپارچه)"""
+    prices = {}
+    
+    try:
+        # دریافت یکجای همه قیمت‌ها (بسیار سریع‌تر از درخواست تکی)
+        tickers = "BTC-USD ETH-USD SOL-USD BNB-USD XRP-USD GC=F SI=F USDIRR=X"
+        data = yf.download(tickers, period='5d', group_by='ticker', progress=False, threads=True)
+        
+        # پردازش کریپتوها
+        crypto_map = {
+            'BTC-USD': ('بیت‌کوین', 'BTC'),
+            'ETH-USD': ('اتریوم', 'ETH'),
+            'SOL-USD': ('سولانا', 'SOL'),
+            'BNB-USD': ('بایننس کوین', 'BNB'),
+            'XRP-USD': ('ریپل', 'XRP')
+        }
+        
+        for ticker, (fa_name, en_name) in crypto_map.items():
+            try:
+                if len(data[ticker].dropna()) >= 2:
+                    current = float(data[ticker]['Close'].dropna().iloc[-1])
+                    previous = float(data[ticker]['Close'].dropna().iloc[-2])
+                    change = ((current - previous) / previous) * 100
+                    prices[f'crypto_{en_name}'] = {
+                        'fa_name': fa_name,
+                        'price': current,
+                        'change': change,
+                        'currency': '$',
+                        'format': ',.2f'
+                    }
+            except:
+                continue
+        
+        # انس جهانی طلا
+        try:
+            if len(data['GC=F'].dropna()) >= 2:
+                current = float(data['GC=F']['Close'].dropna().iloc[-1])
+                previous = float(data['GC=F']['Close'].dropna().iloc[-2])
+                change = ((current - previous) / previous) * 100
+                prices['gold_oz'] = {
+                    'fa_name': 'انس جهانی طلا',
+                    'price': current,
+                    'change': change,
+                    'currency': '$',
+                    'format': ',.2f'
+                }
+        except:
+            pass
+        
+        # انس جهانی نقره
+        try:
+            if len(data['SI=F'].dropna()) >= 2:
+                current = float(data['SI=F']['Close'].dropna().iloc[-1])
+                previous = float(data['SI=F']['Close'].dropna().iloc[-2])
+                change = ((current - previous) / previous) * 100
+                prices['silver_oz'] = {
+                    'fa_name': 'انس جهانی نقره',
+                    'price': current,
+                    'change': change,
+                    'currency': '$',
+                    'format': ',.2f'
+                }
+        except:
+            pass
+        
+        # طلای ۱۸ عیار ایران (محاسبه تقریبی از انس جهانی)
+        # فرمول: (انس جهانی × ۳۱.۱۰۳۵ گرم × نرخ دلار ÷ ۷۵۰) × ۱۰۰۰
+        # توجه: این محاسبه بدون احتساب حباب و اجرت است و تقریبی است
+        if 'gold_oz' in prices and 'dollar_irr' in prices:
+            try:
+                gold_oz_usd = prices['gold_oz']['price']
+                dollar_rate = prices['dollar_irr']['price']
+                # محاسبه قیمت یک گرم طلای ۱۸ عیار (۷۵۰ از ۱۰۰۰)
+                gold_18k = (gold_oz_usd * 31.1035 * dollar_rate / 750) * 1000 / 1000
+                prices['gold_18k'] = {
+                    'fa_name': 'طلای ۱۸ عیار (هر گرم)',
+                    'price': gold_18k,
+                    'change': prices['gold_oz']['change'],  # همبستگی با انس جهانی
+                    'currency': 'تومان',
+                    'format': ',.0f',
+                    'note': '⚠️ محاسبه تقریبی از انس جهانی'
+                }
+            except:
+                pass
+        
+        # دلار (نرخ رسمی yfinance)
+        try:
+            if len(data['USDIRR=X'].dropna()) >= 2:
+                current = float(data['USDIRR=X']['Close'].dropna().iloc[-1])
+                previous = float(data['USDIRR=X']['Close'].dropna().iloc[-2])
+                change = ((current - previous) / previous) * 100
+                prices['dollar_irr'] = {
+                    'fa_name': 'دلار (نرخ رسمی)',
+                    'price': current,
+                    'change': change,
+                    'currency': 'ریال',
+                    'format': ',.0f',
+                    'note': '⚠️ نرخ رسمی (تفاوت با بازار آزاد)'
+                }
+        except:
+            pass
+            
+    except Exception as e:
+        st.error(f"خطا در دریافت قیمت‌ها: {str(e)[:50]}")
+    
+    return prices
+
+# ==========================================
+# نمایش قیمت‌های زنده در داشبورد
+# ==========================================
+st.subheader("💹 قیمت‌های زنده بازار (Live Market Prices)")
+st.caption("⏱️ به‌روزرسانی خودکار هر ۵ دقیقه | داده‌ها از Yahoo Finance")
+
+prices = get_live_market_prices()
+
+if prices:
+    # بخش ۱: ارزهای دیجیتال
+    st.markdown("#### 🪙 ارزهای دیجیتال")
+    crypto_cols = st.columns(5)
+    crypto_names = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP']
+    
+    for i, name in enumerate(crypto_names):
+        with crypto_cols[i]:
+            data = prices.get(f'crypto_{name}')
+            if data and data.get('price'):
+                delta_color = "normal" if data['change'] >= 0 else "inverse"
+                st.metric(
+                    label=f"{data['fa_name']} ({name})",
+                    value=f"${data['price']:,.2f}",
+                    delta=f"{data['change']:+.2f}%",
+                    delta_color=delta_color
+                )
+            else:
+                st.metric(label=f"({name})", value="—", delta="داده در دسترس نیست")
+    
+    st.markdown("---")
+    
+    # بخش ۲: فلزات گرانبها
+    st.markdown("#### 🥇 فلزات گرانبها")
+    metal_cols = st.columns(4)
+    metal_items = [
+        ('gold_oz', '🥇'),
+        ('silver_oz', '🥈'),
+        ('gold_18k', '💰'),
+        ('dollar_irr', '💵')
+    ]
+    
+    for i, (key, emoji) in enumerate(metal_items):
+        with metal_cols[i]:
+            data = prices.get(key)
+            if data and data.get('price'):
+                delta_color = "normal" if data['change'] >= 0 else "inverse"
+                price_formatted = f"{data['price']:{data['format']}}"
+                st.metric(
+                    label=f"{emoji} {data['fa_name']}",
+                    value=f"{price_formatted} {data['currency']}",
+                    delta=f"{data['change']:+.2f}%",
+                    delta_color=delta_color
+                )
+                if 'note' in data:
+                    st.caption(data['note'])
+            else:
+                st.metric(label=f"{emoji}", value="—", delta="داده در دسترس نیست")
+else:
+    st.warning("⚠️ در حال حاضر امکان دریافت قیمت‌های زنده وجود ندارد.")
+
+st.markdown("---")
+
+
 # ==========================================
 # ادامه کد اصلی شما (if not df.empty:)
 # ==========================================
