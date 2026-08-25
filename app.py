@@ -58,6 +58,20 @@ if not df.empty:
     col3.metric("نرخ برد (Win Rate)", f"{win_rate:.1f}%")
     col4.metric("آخرین پیش‌بینی", df.iloc[-1]['prediction'], delta="در انتظار نتیجه" if df.iloc[-1]['result'] == 'pending' else df.iloc[-1]['result'])
 
+    # ==========================================
+    # نمایش جزئیات رأی‌گیری آخرین پیش‌بینی
+    # ==========================================
+    st.subheader("🗳️ آخرین رأی‌گیری کمیته متخصصان")
+    last_pred = df.iloc[-1]
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("تصمیم نهایی", 
+                  "🟢 صعودی (UP)" if last_pred['prediction'] == 'UP' else "🔴 نزولی (DOWN)",
+                  f"اطمینان: {last_pred['confidence']}%")
+    
+    with col2:
+        st.info(f"**جزئیات آرا:**\n\n{last_pred['vote_details']}")
     st.markdown("---")
 
     # ==========================================
