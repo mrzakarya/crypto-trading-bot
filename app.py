@@ -171,7 +171,77 @@ with tab_robot:
         col1.metric("💰 سرمایه فعلی", f"{capital:,.0f} $", f"{((capital-10000)/10000)*100:+.2f}%")
         col2.metric("📊 تعداد تریدها", total)
         col3.metric("🎯 نرخ برد", f"{win_rate:.1f}%")
+
+
+                # ==========================================
+        # بخش جدید: دفتر کل و عملکرد ماه جاری (Monthly Ledger)
+        # ==========================================
+        st.markdown("---")
+        st.subheader("📅 عملکرد ماه جاری (Monthly Track Record)")
+        st.caption("این بخش به صورت خودکار نتایج پیش‌بینی‌های تکمیل‌شده در ماه جاری را محاسبه می‌کند.")
         
+        # تبدیل ستون تاریخ به فرمت datetime برای فیلتر کردن
+        df['date'] = pd.to_datetime(df['date'])
+        current_month = datetime.now().month
+        current_year = datetime.now().year
+        
+        # فیلتر کردن داده‌های ماه جاری
+        monthly_df = df[(df['date'].dt.month == current_month) & (df['date'].dt.year == current_year)]
+        monthly_completed = monthly_df[monthly_df['result'].isin(['win', 'loss'])]
+        
+        if not monthly_completed.empty:
+            m_total = len(monthly_completed)
+            m_wins = len(monthly_completed[monthly_completed['result'] == 'win'])
+            m_losses = len(monthly_completed[monthly_completed['result'] == 'loss'])
+            m_win_rate = (m_wins / m_total * 100) if m_total > 0 else 0
+            
+            # محاسبه سود/ضرر ماه جاری به صورت جداگانه
+            m_capital = 10000
+            for _, row in monthly_completed.iterrows():
+                if row['result'] == 'win':
+                    m_capital += m_capital * 0.025
+                else:
+                    m_capital -= m_capital * 0.01
+                    
+            m_profit_pct = ((m_capital - 10000) / 10000) * 100
+            
+            m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+            m_col1.metric("تعداد پیش‌بینی‌های ماه", m_total)
+            m_col2.metric("تعداد بردها (Win)", m_wins, delta_color="normal")
+            m_col3.metric("نرخ برد ماه جاری", f"{m_win_rate:.1f}%")
+            
+            # رنگ‌بندی هوشمند برای سود/ضرر
+            delta_color = "normal" if m_profit_pct >= 0 else "inverse"
+            m_col4.metric(
+                "سود/ضرر ماه جاری", 
+                f"{m_profit_pct:+.2f}%", 
+                delta=f"{m_capital - 10000:+,.0f} $",
+                delta_color=delta_color
+            )
+            
+            # نمایش جدول دفتر کل ماه جاری
+            st.markdown("#### 📋 دفتر کل معاملات ماه جاری")
+            ledger_df = monthly_completed[['date', 'prediction', 'entry_price', 'exit_price', 'price_change_pct', 'result']].copy()
+            ledger_df['date'] = ledger_df['date'].dt.strftime('%Y-%m-%d')
+            ledger_df['prediction'] = ledger_df['prediction'].apply(lambda x: '🟢 صعودی' if x == 'UP' else '🔴 نزولی')
+            
+            def color_ledger(val):
+                if val == 'win': return 'color: #28a745; font-weight: bold' # سبز
+                if val == 'loss': return 'color: #dc3545; font-weight: bold' # قرمز
+                return ''
+            
+            st.dataframe(
+                ledger_df.style.applymap(color_ledger, subset=['result']).format({
+                    'entry_price': '{:,.2f} $',
+                    'exit_price': '{:,.2f} $',
+                    'price_change_pct': '{:+.2f} %'
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("⏳ هنوز هیچ پیش‌بینی‌ای در ماه جاری به نتیجه (Win/Loss) نرسیده است. ربات در حال جمع‌آوری داده است.")
+            
         st.markdown("---")
         if len(completed) > 0:
             fig = go.Figure()
