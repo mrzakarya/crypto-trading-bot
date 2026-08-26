@@ -172,8 +172,35 @@ with tab_robot:
         col2.metric("📊 تعداد تریدها", total)
         col3.metric("🎯 نرخ برد", f"{win_rate:.1f}%")
 
-
-                # ==========================================
+        # ==========================================
+        # بخش جدید: پیش‌بینی‌های در انتظار (Pending Predictions)
+        # ==========================================
+        st.markdown("---")
+        st.subheader("🔮 پیش‌بینی‌های در انتظار (Pending)")
+        st.caption("این پیش‌بینی‌ها ثبت شده‌اند و فردا نتیجه‌شان مشخص می‌شود.")
+        
+        pending_df = df[df['result'] == 'pending'].copy()
+        
+        if not pending_df.empty:
+            # نمایش آخرین ۵ پیش‌بینی در انتظار
+            pending_display = pending_df.tail(5)[['date', 'prediction', 'confidence', 'entry_price']].copy()
+            pending_display['prediction'] = pending_display['prediction'].apply(lambda x: '🟢 صعودی' if x == 'UP' else '🔴 نزولی')
+            pending_display['date'] = pd.to_datetime(pending_display['date']).dt.strftime('%Y-%m-%d')
+            
+            st.dataframe(
+                pending_display.style.format({
+                    'entry_price': '{:,.2f} $',
+                    'confidence': '{:.1f} %'
+                }),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            st.info(f"📊 تعداد کل پیش‌بینی‌های در انتظار: {len(pending_df)}")
+        else:
+            st.info("⏳ هیچ پیش‌بینی در انتظاری وجود ندارد. ربات فردا اولین پیش‌بینی را ثبت خواهد کرد.")
+        
+        # ==========================================
         # بخش جدید: دفتر کل و عملکرد ماه جاری (Monthly Ledger)
         # ==========================================
         st.markdown("---")
