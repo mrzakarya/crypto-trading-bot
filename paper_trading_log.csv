@@ -1,3 +1,4 @@
 date,entry_price,prediction,confidence,rsi,sentiment,result,exit_price,exit_date,price_change_pct,vote_details
 2026-08-25,78899.05,DOWN,32.63,89.26,0.574,loss,78552.609375,2026-08-26,-0.44,LGBM:33.6% | RF:51.0% | LR:46.0% | MLP:0.0%
-2026-08-26,78552.61,DOWN,30.11,88.37,0.007,pending,,,,LGBM:27.8% | RF:48.0% | LR:44.6% | MLP:0.0%
+2026-08-26,78552.61,DOWN,30.11,88.37,0.007,loss,79942.1015625,2026-08-27,1.77,LGBM:27.8% | RF:48.0% | LR:44.6% | MLP:0.0%
+2026-08-27,79942.1,DOWN,31.82,89.18,-0.332,pending,,,,LGBM:43.6% | RF:40.0% | LR:43.6% | MLP:0.0%
