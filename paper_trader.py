@@ -28,9 +28,9 @@ def load_model():
         return None
 
 def build_features_for_today():
-    """دریافت داده‌های اخیر و ساخت ویژگی‌ها دقیقاً مطابق زمان آموزش"""
-    print("📊 در حال دریافت داده‌های قیمت بیت‌کوین (۶۰ روز اخیر)...")
-    df = yf.Ticker("BTC-USD").history(period="60d")
+    """دریافت داده‌های اخیر و ساخت ویژگی‌های پیشرفته"""
+    print("📊 در حال دریافت داده‌های قیمت بیت‌کوین (۱۰۰ روز اخیر برای محاسبه دقیق اندیکاتورها)...")
+    df = yf.Ticker("BTC-USD").history(period="100d")
     
     if df.empty or len(df) < 55:
         print("❌ داده‌های کافی از yfinance دریافت نشد.")
@@ -38,7 +38,7 @@ def build_features_for_today():
     
     df.index = df.index.tz_localize(None)
     
-    # تولید احساسات شبیه‌سازی‌شده (چون دیتاست خبری هنوز کوچک است)
+    # --- تولید احساسات شبیه‌سازی‌شده (همانند قبل) ---
     np.random.seed(int(datetime.now().strftime("%Y%m%d")))
     df['Daily_Return'] = df['Close'].pct_change()
     base_sentiment = np.sign(df['Daily_Return'].shift(1)) * 0.4
@@ -46,29 +46,46 @@ def build_features_for_today():
     df['sentiment_score'] = (base_sentiment + noise).clip(-1, 1)
     df['news_count'] = np.random.randint(5, 30, len(df))
     
-    # مهندسی ویژگی‌ها (دقیقاً مطابق dry_run_local.py)
+    # --- مهندسی ویژگی‌های پیشرفته ---
+    # ۱. میانگین‌های متحرک
     df['SMA_20'] = df['Close'].rolling(window=20).mean()
-    df['SMA_50'] = df['Close'].rolling(window=50).mean()
+    df['SMA_50'] = df['Close'].rolling(window=50).mean3
     df['Dist_from_SMA50'] = (df['Close'] - df['SMA_50']) / df['SMA_50']
     
+    # ۲. RSI
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     df['RSI'] = 100 - (100 / (1 + rs))
     
-    df['Volume_Change'] = df['Volume'].pct_change()
+    # ۳. MACD (شاخص واگرایی همگرایی میانگین متحرک)
+    ema_12 = df['Close'].ewm(span=12, adjust=False).mean()
+    ema_26 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = ema_12 - ema_26
+    df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    df['MACD_Hist'] = df['MACD'] - df['MACD_Signal']
     
+    # ۴. Bollinger Bands (باندهای بولینگر برای سنجش نوسان)
+    df['BB_Middle'] = df['Close'].rolling(window=20).mean()
+    bb_std = df['Close'].rolling(window=20).std()
+    df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
+    df['BB_Lower'] = df['BB_Middle'] - (bb_std * 2)
+    df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Middle']
+    
+    # ۵. احساسات ترکیبی
     df['Hybrid_Sentiment'] = np.where(
-        df['news_count'] > 0,
-        df['sentiment_score'],
+        df['news_count'] > 0, df['sentiment_score'],
         np.where(df['Daily_Return'].shift(1) < -0.02, -1.0,
                  np.where(df['Daily_Return'].shift(1) > 0.02, 1.0, 0.0))
     )
     df['Hybrid_Sentiment_SMA_3'] = df['Hybrid_Sentiment'].rolling(window=3).mean()
     
+    # شیفت برای جلوگیری از Look-Ahead Bias
     df['Hybrid_Sentiment'] = df['Hybrid_Sentiment'].shift(1)
     df['Hybrid_Sentiment_SMA_3'] = df['Hybrid_Sentiment_SMA_3'].shift(1)
+    df['MACD_Hist'] = df['MACD_Hist'].shift(1)
+    df['BB_Width'] = df['BB_Width'].shift(1)
     
     df.dropna(inplace=True)
     
@@ -76,12 +93,14 @@ def build_features_for_today():
         return None, None
     
     latest_row = df.iloc[-1]
-    latest_price = latest_row['Close']
     
-    features = ['SMA_20', 'Dist_from_SMA50', 'RSI', 'Volume_Change', 
-                'Hybrid_Sentiment', 'Hybrid_Sentiment_SMA_3']
+    # لیست جدید ویژگی‌ها (شامل موارد پیشرفته)
+    features = [
+        'Dist_from_SMA50', 'RSI', 'MACD_Hist', 'BB_Width', 
+        'Hybrid_Sentiment', 'Hybrid_Sentiment_SMA_3'
+    ]
     
-    # ساخت یک DataFrame تک‌ردیفی با نام ستون‌های صحیح برای حذف هشدار
+    # ساخت DataFrame تک‌ردیفی برای جلوگیری از هشدار Scikit-Learn
     X_today = pd.DataFrame([latest_row[features]], columns=features)
     
     return X_today, latest_row
