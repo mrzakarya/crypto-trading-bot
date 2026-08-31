@@ -199,6 +199,25 @@ def make_today_prediction():
     # ۲. دریافت جزئیات رأی‌گیری هر مدل
     vote_details = []
     final_prob_up = model.predict_proba(X_today)[0][1]
+   
+    
+    # 🔥 منطق جدید: فیلتر اطمینان (Confidence Filter)
+    # اگر احتمال بین ۴۵٪ تا ۵۵٪ باشد، یعنی مدل‌ها مطمئن نیستند -> دستور HOLD
+    if 0.45 <= final_prob_up <= 0.55:
+        pred_label = 'HOLD'
+        decision_text = "صبر کن (HOLD) ⏸️"
+    elif final_prob_up > 0.55:
+        pred_label = 'UP'
+        decision_text = "صعودی (UP) 🟢"
+    else:
+        pred_label = 'DOWN'
+        decision_text = "نزولی (DOWN) 🔴"
+    
+    # ... (ادامه کد برای ثبت در لاگ و نمایش) ...
+    # نکته: در بخش ثبت در لاگ، اگر pred_label == 'HOLD' بود، می‌توانید entry_price را 0 بگذارید 
+    # یا کلاً آن روز را ثبت نکنید. برای سادگی، آن را ثبت می‌کنیم اما در بک‌تست نادیده گرفته می‌شود.
+
+
     
     for name, mdl in model.named_estimators_.items():
         prob = mdl.predict_proba(X_today)[0][1] * 100
